@@ -1,7 +1,7 @@
 {
     "version": "1.0.0",
     "summary": "Dialog prompts for Elm",
-    "repository": "https://github.com/etaque/elm-modal.git",
+    "repository": "https://github.com/etaque/elm-dialog.git",
     "license": "BSD3",
     "source-directories": [
         "src/"
