@@ -4,8 +4,9 @@
 
 A modal component for [Elm](http://elm-lang.org/). Not named `elm-modal` because it would be type-error-prone with the `model` we have everywhere in our apps!
 
-
 ## Features
+
+![Dialog screenshot](screenshot.png)
 
 * Plug it once, use it from anywhere in your app (by sending a message),
 * Simple view/style provided but can work with any css framework,
