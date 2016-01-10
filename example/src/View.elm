@@ -32,7 +32,7 @@ dialog addr options =
           [ class "btn btn-default"
           , Dialog.closeOnClick
           ]
-          [ text "Nope, reset everything!" ]
+          [ text "Nope" ]
       , a
           [ class "btn btn-primary"
           , Dialog.closeThenSendOnClick addr Inc
