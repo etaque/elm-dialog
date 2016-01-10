@@ -7,7 +7,7 @@ A modal component for [Elm](http://elm-lang.org/). Not named `elm-modal` because
 
 ## Features
 
-* Plug it once, use it from anywhere in your app
+* Plug it once, use it from anywhere in your app (exposes a Mailbox)
 * Simple view/style provided but can work with any css framework
 * Animation-ready: built on top of [elm-transit](http://package.elm-lang.org/packages/etaque/elm-transit/latest), you can add open/close effects and wait until animation is ended to trigger your own actions.
 
@@ -42,7 +42,6 @@ type Action
 ### Update
 
 * Add the case match for the dialog actions. If you've chosen the record extension, then you can use the `wrappedUpdate`.
-  The first parameter (`150`) is the duration of the animation, in milliseconds.
 
 
 ```elm
@@ -51,13 +50,14 @@ update action model =
   case action of
     ...
 
+    -- with `WithDialog` record extension:
     DialogAction dialogAction ->
-      Dialog.wrappedUpdate 150 DialogAction dialogAction model
+      Dialog.wrappedUpdate DialogAction dialogAction model
     
     -- without record extension:
     DialogAction dialogAction ->
       let
-        (newDialog, dialogFx) = Dialog.update 150 dialogAction model.dialog
+        (newDialog, dialogFx) = Dialog.update dialogAction model.dialog
       in
         ({ model | dialog = newDialog }, Effects.map DialogAction dialogFx)
 ```
@@ -129,7 +129,7 @@ Those are the **Simple** modal style decorators provided with the package. You c
 Note also the `opacity` and `display` helpers for fading and visibity control.
 
 
-### Controlling the dialog
+### Control and configuration
 
 The package provide two levels to control dialog:
 

@@ -1,32 +1,32 @@
 module Dialog
-  ( Dialog, WithDialog, Action
+  ( Dialog, WithDialog, Action, Options
   , initial, update, wrappedUpdate, actions
-  , address, show, hide, hideThenSend
-  , view, header, body, footer
-  , onClickShow, onClickHide, onClickHideThenSend, opacity, display
-  , getContent, getTransition, isOpen
+  , address, open, openWithOptions, close, closeThenSend, closeThenDo
+  , view, header, closeButton, body, footer
+  , onClickOpen, onClickOpenWithOptions, onClickClose, onClickCloseThenSend, opacity, display
+  , getContent, getOptions, getTransition, isOpen
   ) where
 
 {-|
 A modal component for Elm. See README for usage instructions.
 
 # Types
-@docs Dialog, WithDialog, Action
+@docs Dialog, WithDialog, Action, Options
 
 # Init and update
 @docs initial, update, wrappedUpdate, actions
 
 # Send actions
-@docs address, show, hide, hideThenSend
+@docs address, open, openWithOptions, close, closeThenSend, closeThenDo
 
 # Simple theme
-@docs view, header, body, footer
+@docs view, header, closeButton, body, footer
 
 # View helpers
-@docs onClickShow, onClickHide, onClickHideThenSend, opacity, display
+@docs onClickOpen, onClickOpenWithOptions, onClickClose, onClickCloseThenSend, opacity, display
 
 # State querying
-@docs getContent, getTransition, isOpen
+@docs getContent, getOptions, getTransition, isOpen
 -}
 
 import Html exposing (..)
@@ -47,6 +47,7 @@ type Dialog = S State
 
 type alias State = Transit.WithTransition
   { open : Bool
+  , options : Options
   , content : List Html
   }
 
@@ -59,17 +60,37 @@ initial : Dialog
 initial =
   { transition = Transit.initial
   , open = False
+  , options = defaultOptions
   , content = []
   } |> S
 
 {-| Dialog actions. -}
 type Action
   = NoOp
-  | Show (List Html)
-  | Hide
+  | Open (Maybe Options) (Options -> List Html)
+  | Escape
+  | Close
+  | CloseThenDo (Task Never ())
   | Do (Task Never ())
   | TransitAction (Transit.Action Action)
 
+{-| Display and behaviour options (see showWithOptions):
+* `duration` of the fade transition,
+* `onClose`: what should be done when closing the modal. Set it to Nothing to prevent closing.
+ -}
+type alias Options =
+  { duration : Float
+  , onClose : Maybe (Task Never ())
+  }
+
+{-| Default options: 150ms transition, closable. -}
+defaultOptions : Options
+defaultOptions =
+  { duration = 150
+  , onClose = Just (Signal.send address Close)
+  }
+
+{-| Private -}
 mailbox : Mailbox Action
 mailbox =
   Signal.mailbox NoOp
@@ -79,7 +100,7 @@ actions : Signal Action
 actions =
   Signal.mergeMany
     [ mailbox.signal
-    , Signal.map (\_ -> Hide) (Keyboard.isDown 27)
+    , Signal.map (\_ -> Escape) (Keyboard.isDown 27)
     ]
 
 {-| Where to send your actions -}
@@ -87,59 +108,69 @@ address : Address Action
 address =
   mailbox.address
 
-{-| Action builder for showing up dialog with content. -}
-show : List Html -> Action
-show =
-  Show
+{-| Action builder for opening dialog with default options and content. -}
+open : (Options -> List Html) -> Action
+open =
+  Open Nothing
 
-{-| Action build for hiding dialog. -}
-hide : Action
-hide =
-  Hide
+{-| Action builder for open dialog with custom options and content. -}
+openWithOptions : Options -> (Options -> List Html) -> Action
+openWithOptions options =
+  Open (Just options)
 
-{-| Action build for hiding dialog then sending an action to an address. -}
-hideThenSend : Address a -> a -> Action
-hideThenSend addr action =
-  Do (Signal.send addr action)
+{-| Action builder for closing dialog. -}
+close : Action
+close =
+  Close
+
+{-| Action builder for closing dialog then sending an action to an address. -}
+closeThenSend : Address a -> a -> Action
+closeThenSend addr action =
+  closeThenDo (Signal.send addr action)
+
+{-| Action builder for closing dialog send performing a task. -}
+closeThenDo : Task Never () -> Action
+closeThenDo =
+  CloseThenDo
 
 {-| Update dialog state. Takes effect duration in ms as first parameter. -}
-update : Float -> Action -> Dialog -> (Dialog, Effects Action)
-update duration action (S state) =
+update : Action -> Dialog -> Response Dialog Action
+update action (S state) =
   case action of
 
-    Show content ->
+    Open maybeOptions template ->
       let
-        timeline = Transit.timeline 0 NoOp duration
+        options = Maybe.withDefault defaultOptions maybeOptions
+        timeline = Transit.timeline 0 NoOp options.duration
         newModel =
           { state
             | open = True
-            , content = content
+            , content = template options
+            , options = options
           }
       in
         Transit.init TransitAction timeline newModel
           |> mapModel S
 
-    Hide ->
-      if state.open then
-        let
-          timeline = Transit.timeline duration NoOp 0
-          newState = { state | open = False }
-        in
-          Transit.init TransitAction timeline newState
-            |> mapModel S
-      else
-        (S state, none)
+    Escape ->
+      case state.options.onClose of
+        Just task ->
+          taskRes (S state) (Task.succeed Close)
+        Nothing ->
+          res (S state) none
+
+    Close ->
+      case state.options.onClose of
+        Just task ->
+          updateCloseThenDo task (S state)
+        Nothing ->
+          res (S state) none
+
+    CloseThenDo task ->
+      updateCloseThenDo task (S state)
 
     Do task ->
-      let
-        newModel = S
-          { state
-            | open = False
-            , content = []
-          }
-        fx = Effects.task task |> Effects.map (\_ -> NoOp)
-      in
-        (newModel, fx)
+      taskRes (S { state | content = [] }) (Task.map (\_ -> NoOp) task)
 
     TransitAction a ->
       Transit.update TransitAction a state
@@ -148,11 +179,25 @@ update duration action (S state) =
     NoOp ->
       (S state, none)
 
+{-| Internal -}
+updateCloseThenDo : Task Never () -> Dialog -> Response Dialog Action
+updateCloseThenDo task (S state) =
+  if state.open then
+    let
+      timeline = Transit.timeline state.options.duration (Do task) 0
+      newState = { state | open = False }
+    in
+      Transit.init TransitAction timeline newState
+        |> mapModel S
+  else
+    (S state, none)
+
+
 {-| Wrapped update for `WithDialog`, saves you a model field update and an Effects map. -}
-wrappedUpdate : Float -> (Action -> action) -> Action -> WithDialog model -> (WithDialog model, Effects action)
-wrappedUpdate duration actionWrapper action model =
+wrappedUpdate : (Action -> action) -> Action -> WithDialog model -> Response (WithDialog model) (action)
+wrappedUpdate actionWrapper action model =
   let
-    (newDialog, dialogFx) = update duration action model.dialog
+    (newDialog, dialogFx) = update action model.dialog
   in
     ({ model | dialog = newDialog }, Effects.map actionWrapper dialogFx)
 
@@ -167,73 +212,74 @@ view dialog =
         [ class "modal-dialog" ]
         [ div [ class "modal-content" ] (getContent dialog)
         ]
-    , div [ class "modal-backdrop" ] []
+    , div [ class "modal-backdrop", onClickClose ] []
     ]
 
-{-| Header decorator, with a Close button. -}
-header : String -> Html
-header title =
-  header' title (Just (address, hide))
-
-{-| Header decorator, without a Close button. -}
-headerNoClose : String -> Html
-headerNoClose title =
-  header' title Nothing
-
-{-| Header decorator, with a custom address/action for the Close button. -}
-headerCustomClose : String -> Address a -> a -> Html
-headerCustomClose title address action =
-  header' title (Just (address, action))
-
-header' : String -> Maybe (Address a, a) -> Html
-header' title maybeClose =
+{-| Header decorator, with a Close button just hiding the dialog. -}
+header : Options -> String -> Html
+header options title =
   div
     [ class "modal-header" ] <|
     [ h1 [ class "modal-title" ] [ text title ]
-    ] ++ (Maybe.map closeButton maybeClose |> Maybe.withDefault [])
+    ] ++ (closeButton options)
 
-closeButton : (Address a, a) -> List Html
-closeButton (address, action) =
-  [ button
-      [ class "close"
-      , attribute "aria-label" "Close"
-      , onClick address action
+{-| Close button with action. -}
+closeButton : Options -> List Html
+closeButton options =
+  case options.onClose of
+    Just task ->
+      [ button
+          [ class "close"
+          , attribute "aria-label" "Close"
+          , onClickClose
+          ]
+          [ span
+            [ attribute "aria-hidden" "true" ]
+            [ text "×" ]
+          ]
       ]
-      [ span
-        [ attribute "aria-hidden" "true" ]
-        [ text "×" ]
-      ]
-  ]
+    Nothing ->
+      []
 
 {-| Body decorator. -}
 body : List Html -> Html
-body =
-  div [ class "modal-body" ]
+body content =
+  div [ class "modal-body" ] content
 
 {-| Footer decorator. -}
 footer : List Html -> Html
-footer =
-  div [ class "modal-footer" ]
+footer content =
+  div [ class "modal-footer" ] content
 
 {-| On click, fill and show up dialog with the provided content. -}
-onClickShow : List Html -> Attribute
-onClickShow content =
-  onClick address (show content)
+onClickOpen : (Options -> List Html) -> Attribute
+onClickOpen content =
+  onClick address (open content)
+
+{-| On click, fill and show up dialog with the provided options and content. -}
+onClickOpenWithOptions : Options -> (Options -> List Html) -> Attribute
+onClickOpenWithOptions options content =
+  onClick address (openWithOptions options content)
 
 {-| On click, hide dialog. -}
-onClickHide : Attribute
-onClickHide =
-  onClick address hide
+onClickClose : Attribute
+onClickClose =
+  onClick address close
 
 {-| On click, hide dialog then send action. -}
-onClickHideThenSend : Address a -> a -> Attribute
-onClickHideThenSend addr action =
-  onClick address (hideThenSend addr action)
+onClickCloseThenSend : Address a -> a -> Attribute
+onClickCloseThenSend addr action =
+  onClick address (closeThenSend addr action)
 
 {-| Get current dialog content. -}
 getContent : Dialog -> List Html
 getContent (S {content}) =
   content
+
+{-| Get current dialog options -}
+getOptions : Dialog -> Options
+getOptions (S {options}) =
+  options
 
 {-| Get current transition state. -}
 getTransition : Dialog -> Transit.Transition

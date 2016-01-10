@@ -24,16 +24,16 @@ init =
 
 
 update : Action -> Model -> (Model, Effects Action)
-update action model =
+update action ({counter} as model) =
   case action of
     NoOp ->
       (model, none)
 
     Inc ->
-      let
-        counter = model.counter + 1
-      in
-        ({ model | counter = counter }, none)
+      ({ model | counter = counter + 1 }, none)
+
+    Reset ->
+      ({ model | counter = 0 }, none)
 
     DialogAction a ->
-      Dialog.wrappedUpdate 150 DialogAction a model
+      Dialog.wrappedUpdate DialogAction a model
