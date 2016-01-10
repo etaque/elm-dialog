@@ -14,8 +14,7 @@ A modal component for [Elm](http://elm-lang.org/). Not named `elm-modal` because
 
 ## Usage
 
-See [example/](./example/) for a fully working usage example. Don't forged to `import Dialog` in every impacted module.
-
+Don't forged to `import Dialog` in every impacted module. See [example/](./example/) for a fully working usage example.
 
 ### Model
 
@@ -61,14 +60,14 @@ update action model =
         ({ model | dialog = newDialog }, Effects.map DialogAction dialogFx)
 ```
 
+The first parameter (`150`) is the duration of the animation, in milliseconds.
+
 ### View
 
-It's a two steps process:
+You can find *[here](./example/styles/simple.css)* a default stylesheet for the dialog. On Elm side, it's a two-steps process:
 
 * Plug the Dialog view at the root of your view. It's only a shell, hidden by default.
   It will be in charge of showing up the dialog content and backdrop according to state.
-  
-  Note: you can find [here](./example/styles/simple.css) a default stylesheet for the dialog.
  
 ```elm
 view : Address Action -> Model -> Html
@@ -118,14 +117,14 @@ Those are the **Simple** modal style decorators provided with the package. You c
 * `body` for the message of the modal,
 * `footer` for the actions.
 
-Note also the `opacity` and `display` helpers to control fading and visibity.
+Note also the `opacity` and `display` helpers for fading and visibity control.
 
 
 ### Controlling the dialog
 
 The package provide two levels to control dialog:
 
-* The basics are `Dialog.address : Address Dialog.Action` in combination with those action builders: 
+* The basis is `address : Address Dialog.Action` in combination with those action builders: 
   * `show : List Html -> Dialog.Action` shows up the modal with the provided content,
   * `hide : Dialog.Action` hides the modal,
   * `hideThenSend : Address a -> a -> Dialog.Action` hides the modal then send the given action to the supplied address when hide animation is done.
