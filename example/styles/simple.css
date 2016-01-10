@@ -1,3 +1,7 @@
+/*
+Slightly adapted from tg-modal:
+https://github.com/thorgate/tg-modal/blob/master/src/styles/default.scss
+*/
 
 .modal {
   position: fixed;

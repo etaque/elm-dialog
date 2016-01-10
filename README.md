@@ -151,3 +151,8 @@ The package provide two levels to control dialog:
 * We could add decorators for the main CSS frameworks, something like `Dialog.Bootstrap`
 
 PRs welcome!
+
+
+## Credits
+
+* [tg-modal](https://github.com/thorgate/tg-modal) for the simple stylesheet
