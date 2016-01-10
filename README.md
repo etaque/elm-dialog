@@ -129,7 +129,11 @@ Those are the **Simple** modal style decorators provided with the package. You c
 Note also the `opacity` and `display` helpers for fading and visibity control.
 
 
-### Control and configuration
+### Options and control
+
+Let's walk the `Options` type:
+
+
 
 The package provide two levels to control dialog:
 
@@ -144,6 +148,7 @@ The package provide two levels to control dialog:
   * `onClickShow : List Html -> Attribute`
   * `onClickHide : Attribute`
   * `onClickHideThenSend : Address a -> a -> Attribute`
+
 
 
 ## What's next

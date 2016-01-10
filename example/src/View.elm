@@ -1,12 +1,12 @@
 module View where
 
 import Html exposing (..)
-import Html.Events exposing (..)
 import Html.Attributes exposing (..)
 
 import Signal exposing (..)
 
 import Dialog
+import Dialog.Simple as Simple
 
 import Model exposing (..)
 
@@ -19,15 +19,15 @@ view addr model =
     , button
         [ Dialog.openOnClick (dialog addr) ]
         [ text "Increment?" ]
-    , Dialog.view model.dialog
+    , Simple.view model.dialog
     ]
 
 dialog : Address Action -> Dialog.Options -> List Html
 dialog addr options =
-  [ Dialog.header options "Confirm"
-  , Dialog.body
+  [ Simple.header options "Confirm"
+  , Simple.body
       [ p [] [ text "Sure?" ] ]
-  , Dialog.footer
+  , Simple.footer
       [ a
           [ class "btn btn-default"
           , Dialog.closeOnClick
