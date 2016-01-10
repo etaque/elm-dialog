@@ -16,16 +16,19 @@ import Dialog exposing (..)
 {-| A simple decorator for the dialog, with backdrop. Put it at the bottom of your body. -}
 view : Dialog -> Html
 view dialog =
-  div
-    [ class "modal"
-    , style [ ("opacity", toString (opacity dialog)), ("display", display dialog) ]
-    ]
-    [ div
-        [ class "modal-dialog" ]
-        [ div [ class "modal-content" ] (getContent dialog)
-        ]
-    , div [ class "modal-backdrop", closeOnClick ] []
-    ]
+  if isVisible dialog then
+    div
+      [ class "modal"
+      , style [ ("opacity", toString (opacity dialog)), ("display", display dialog) ]
+      ]
+      [ div
+          [ class "modal-dialog" ]
+          [ div [ class "modal-content" ] (getContent dialog)
+          ]
+      , div [ class "modal-backdrop", closeOnClick ] []
+      ]
+  else
+    text ""
 
 {-| Header decorator, showing Close button if options.onClose is set. -}
 header : Options -> String -> Html

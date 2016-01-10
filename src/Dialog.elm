@@ -3,7 +3,7 @@ module Dialog
   , initial, update, wrappedUpdate, actions
   , address, open, openWithOptions, close, closeThenSend, closeThenDo
   , openOnClick, openWithOptionsOnClick, closeOnClick, closeThenSendOnClick, opacity, display
-  , getContent, getOptions, getTransition, isOpen
+  , getContent, getOptions, getTransition, isOpen, isVisible
   ) where
 
 {-|
@@ -22,7 +22,7 @@ A modal component for Elm. See README for usage instructions.
 @docs openOnClick, openWithOptionsOnClick, closeOnClick, closeThenSendOnClick, opacity, display
 
 # State querying
-@docs getContent, getOptions, getTransition, isOpen
+@docs getContent, getOptions, getTransition, isOpen, isVisible
 -}
 
 import Html exposing (..)
@@ -237,7 +237,12 @@ isOpen : Dialog -> Bool
 isOpen (S {open}) =
   open
 
-{-| Opacity helper for fading effect. -}
+{-| Visibility helper: either open, or transitionning to closed -}
+isVisible : Dialog -> Bool
+isVisible (S {open, transition}) =
+  open || Transit.getStatus transition == Exit
+
+{-| CSS opacity helper for fading effect. -}
 opacity : Dialog -> Float
 opacity (S {open, transition}) =
   if open then
@@ -250,10 +255,7 @@ opacity (S {open, transition}) =
       Exit -> 1 - Transit.getValue transition
       _ -> 0
 
-{-| Visibility helper. -}
+{-| CSS display helper. -}
 display : Dialog -> String
-display (S {open, transition}) =
-  if open || Transit.getStatus transition == Exit then
-    "block"
-  else
-    "none"
+display dialog =
+  if isVisible dialog then "block" else "none"
