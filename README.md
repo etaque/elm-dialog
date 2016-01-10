@@ -41,7 +41,9 @@ type Action
 
 ### Update
 
-Add the case match for the dialog actions. If you've chosen the record extension, then you can use the `wrappedUpdate`:
+* Add the case match for the dialog actions. If you've chosen the record extension, then you can use the `wrappedUpdate`.
+  The first parameter (`150`) is the duration of the animation, in milliseconds.
+
 
 ```elm
 update : Action -> Model -> (Model, Effects Action)
@@ -60,7 +62,14 @@ update action model =
         ({ model | dialog = newDialog }, Effects.map DialogAction dialogFx)
 ```
 
-The first parameter (`150`) is the duration of the animation, in milliseconds.
+* Add dialog actions signal as an input to your app. With StartApp, that would be:
+
+```elm
+StartApp.Start 
+  { ...
+  , inputs = [ Signal.map DialogAction Dialog.actions ]
+  }
+```
 
 ### View
 
@@ -129,7 +138,7 @@ The package provide two levels to control dialog:
   * `hide : Dialog.Action` hides the modal,
   * `hideThenSend : Address a -> a -> Dialog.Action` hides the modal then send the given action to the supplied address when hide animation is done.
   
-That makes it controllable from everywhere in your app, not only views.
+  That makes it controllable from everywhere in your app, not only views.
 
 * Some `onClick` shortcuts for those action builders:
   * `onClickShow : List Html -> Attribute`
