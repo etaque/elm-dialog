@@ -1,7 +1,7 @@
 module Dialog
   ( Dialog, WithDialog, Action, Options
   , initial, update, wrappedUpdate, actions
-  , address, open, openWithOptions, close, closeThenSend, closeThenDo
+  , address, open, openWithOptions, updateContent, close, closeThenSend, closeThenDo
   , openOnClick, openWithOptionsOnClick, closeOnClick, closeThenSendOnClick, opacity, display
   , getContent, getOptions, getTransition, isOpen, isVisible
   ) where
@@ -16,7 +16,7 @@ A modal component for Elm. See README for usage instructions.
 @docs initial, update, wrappedUpdate, actions
 
 # Send actions
-@docs address, open, openWithOptions, close, closeThenSend, closeThenDo
+@docs address, open, openWithOptions, updateContent, close, closeThenSend, closeThenDo
 
 # View helpers
 @docs openOnClick, openWithOptionsOnClick, closeOnClick, closeThenSendOnClick, opacity, display
@@ -63,6 +63,7 @@ initial =
 type Action
   = NoOp
   | Open (Maybe Options) (Options -> List Html)
+  | UpdateContent (Options -> List Html)
   | Escape
   | Close
   | CloseThenDo (Task Never ())
@@ -113,6 +114,11 @@ openWithOptions : Options -> (Options -> List Html) -> Action
 openWithOptions options =
   Open (Just options)
 
+{-| Action builder for content update -}
+updateContent : (Options -> List Html) -> Action
+updateContent =
+  UpdateContent
+
 {-| Action builder for closing dialog. -}
 close : Action
 close =
@@ -153,6 +159,12 @@ update action (S state) =
           taskRes (S state) (Task.succeed Close)
         Nothing ->
           res (S state) none
+
+    UpdateContent template ->
+      let
+        newModel = S { state | content = template state.options }
+      in
+        res newModel none
 
     Close ->
       case state.options.onClose of
