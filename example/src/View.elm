@@ -17,34 +17,25 @@ view addr model =
     [ ]
     [ p [] [ text (toString model.counter) ]
     , button
-        [ Dialog.onClickOpenWithOptions
-            (confirmOptions addr)
-            (incConfirm addr)
-        ]
+        [ Dialog.openOnClick (dialog addr) ]
         [ text "Increment?" ]
     , Dialog.view model.dialog
     ]
 
-confirmOptions : Address Action -> Dialog.Options
-confirmOptions addr =
-  { duration = 500
-  , onClose = Just (Signal.send addr Reset)
-  }
-
-incConfirm : Address Action -> Dialog.Options -> List Html
-incConfirm addr options =
+dialog : Address Action -> Dialog.Options -> List Html
+dialog addr options =
   [ Dialog.header options "Confirm"
   , Dialog.body
       [ p [] [ text "Sure?" ] ]
   , Dialog.footer
       [ a
           [ class "btn btn-default"
-          , Dialog.onClickClose
+          , Dialog.closeOnClick
           ]
           [ text "Nope, reset everything!" ]
       , a
           [ class "btn btn-primary"
-          , Dialog.onClickCloseThenSend addr Inc
+          , Dialog.closeThenSendOnClick addr Inc
           ]
           [ text "Sure." ]
       ]

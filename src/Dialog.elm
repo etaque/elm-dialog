@@ -3,7 +3,7 @@ module Dialog
   , initial, update, wrappedUpdate, actions
   , address, open, openWithOptions, close, closeThenSend, closeThenDo
   , view, header, closeButton, body, footer
-  , onClickOpen, onClickOpenWithOptions, onClickClose, onClickCloseThenSend, opacity, display
+  , openOnClick, openWithOptionsOnClick, closeOnClick, closeThenSendOnClick, opacity, display
   , getContent, getOptions, getTransition, isOpen
   ) where
 
@@ -23,7 +23,7 @@ A modal component for Elm. See README for usage instructions.
 @docs view, header, closeButton, body, footer
 
 # View helpers
-@docs onClickOpen, onClickOpenWithOptions, onClickClose, onClickCloseThenSend, opacity, display
+@docs openOnClick, openWithOptionsOnClick, closeOnClick, closeThenSendOnClick, opacity, display
 
 # State querying
 @docs getContent, getOptions, getTransition, isOpen
@@ -212,7 +212,7 @@ view dialog =
         [ class "modal-dialog" ]
         [ div [ class "modal-content" ] (getContent dialog)
         ]
-    , div [ class "modal-backdrop", onClickClose ] []
+    , div [ class "modal-backdrop", closeOnClick ] []
     ]
 
 {-| Header decorator, with a Close button just hiding the dialog. -}
@@ -231,7 +231,7 @@ closeButton options =
       [ button
           [ class "close"
           , attribute "aria-label" "Close"
-          , onClickClose
+          , closeOnClick
           ]
           [ span
             [ attribute "aria-hidden" "true" ]
@@ -252,23 +252,23 @@ footer content =
   div [ class "modal-footer" ] content
 
 {-| On click, fill and show up dialog with the provided content. -}
-onClickOpen : (Options -> List Html) -> Attribute
-onClickOpen content =
-  onClick address (open content)
+openOnClick : (Options -> List Html) -> Attribute
+openOnClick template =
+  onClick address (open template)
 
 {-| On click, fill and show up dialog with the provided options and content. -}
-onClickOpenWithOptions : Options -> (Options -> List Html) -> Attribute
-onClickOpenWithOptions options content =
-  onClick address (openWithOptions options content)
+openWithOptionsOnClick : Options -> (Options -> List Html) -> Attribute
+openWithOptionsOnClick options template =
+  onClick address (openWithOptions options template)
 
 {-| On click, hide dialog. -}
-onClickClose : Attribute
-onClickClose =
+closeOnClick : Attribute
+closeOnClick =
   onClick address close
 
 {-| On click, hide dialog then send action. -}
-onClickCloseThenSend : Address a -> a -> Attribute
-onClickCloseThenSend addr action =
+closeThenSendOnClick : Address a -> a -> Attribute
+closeThenSendOnClick addr action =
   onClick address (closeThenSend addr action)
 
 {-| Get current dialog content. -}
