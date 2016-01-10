@@ -10,6 +10,13 @@ A modal component for [Elm](http://elm-lang.org/). Not named `elm-modal` because
 * Simple view/style provided ([screenshot](https://raw.githubusercontent.com/etaque/elm-dialog/master/screenshot.png)) but can work with any css framework,
 * Animation-ready: built on top of [elm-transit](http://package.elm-lang.org/packages/etaque/elm-transit/latest), so you can add open/close effects and wait until animation is ended before seing your actions triggered.
 
+## How does it work?
+
+It assumes that you can only have one instance at a time of an open modal, so the state can be global in the Elm way: declared once, usable from anywhere.
+
+To avoid boilerplate in update delegation, an `Address` is exposed so this global state (ie dialog content, visibility) can be updated from anywhere in you views and updates.
+
+A minor drawback is that the dialog content is stored as `Html` in the state, so can't be automaticaly rerendered from you app model if you need so: you have to send a task to update the dialog content.
 
 ## Usage
 
