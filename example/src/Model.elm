@@ -1,9 +1,13 @@
 module Model where
 
-import Dialog exposing (Dialog)
+import Dialog exposing (WithDialog)
 
 
-type Action = NoOp | Inc | DialogAction Dialog.Action
+type Action
+  = NoOp
+  | Inc
+  | DialogAction Dialog.Action
 
-type alias Model = { dialog : Dialog, counter : Int }
+type alias Model = WithDialog
+  { counter : Int }
 

@@ -17,13 +17,13 @@ view addr model =
     [ ]
     [ p [] [ text (toString model.counter) ]
     , button
-        [ Dialog.onClickShow (modalContent addr) ]
+        [ Dialog.onClickShow (incConfirm addr) ]
         [ text "Increment?" ]
     , Dialog.view model.dialog
     ]
 
-modalContent : Address Action -> List Html
-modalContent addr =
+incConfirm : Address Action -> List Html
+incConfirm addr =
   [ Dialog.header "Confirm"
   , Dialog.body
       [ p [] [ text "Sure?" ] ]

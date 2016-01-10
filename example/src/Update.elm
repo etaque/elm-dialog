@@ -36,7 +36,4 @@ update action model =
         ({ model | counter = counter }, none)
 
     DialogAction a ->
-      let
-        (newDialog, dialogFx) = Dialog.update 150 a model.dialog
-      in
-        ({ model | dialog = newDialog }, Effects.map DialogAction dialogFx)
+      Dialog.wrappedUpdate 150 DialogAction a model

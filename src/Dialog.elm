@@ -17,6 +17,9 @@ type alias Dialog = Transit.WithTransition
   , content : Content
   }
 
+type alias WithDialog model =
+  { model | dialog : Dialog }
+
 initial : Dialog
 initial =
   { transition = Transit.initial
@@ -64,12 +67,6 @@ hideThenSend : Address a -> a -> Action
 hideThenSend addr action =
   Do (Signal.send addr action)
 
-sendShow : Content -> action -> Effects action
-sendShow content noOp =
-  Signal.send address (Show content)
-    |> Effects.task
-    |> Effects.map (\_ -> noOp)
-
 update : Float -> Action -> Dialog -> (Dialog, Effects Action)
 update duration action model =
   case action of
@@ -112,6 +109,12 @@ update duration action model =
     NoOp ->
       (model, none)
 
+wrappedUpdate : Float -> (Action -> action) -> Action -> WithDialog model -> (WithDialog model, Effects action)
+wrappedUpdate duration actionWrapper action model =
+  let
+    (newDialog, dialogFx) = update duration action model.dialog
+  in
+    ({ model | dialog = newDialog }, Effects.map actionWrapper dialogFx)
 
 view : Dialog -> Html
 view ({open, content, transition} as dialog) =
