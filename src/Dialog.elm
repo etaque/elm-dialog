@@ -1,7 +1,7 @@
 module Dialog
   ( Dialog, WithDialog, Action, Options
   , initial, update, wrappedUpdate, actions
-  , address, open, openWithOptions, updateContent, close, closeThenSend, closeThenDo
+  , address, open, openWithOptions, updateContent, closeThenSend, closeThenDo
   , openOnClick, openWithOptionsOnClick, closeOnClick, closeThenSendOnClick, opacity, display
   , getContent, getOptions, getTransition, isOpen, isVisible
   ) where
@@ -16,7 +16,7 @@ A modal component for Elm. See README for usage instructions.
 @docs initial, update, wrappedUpdate, actions
 
 # Send actions
-@docs address, open, openWithOptions, updateContent, close, closeThenSend, closeThenDo
+@docs address, open, openWithOptions, updateContent, closeThenSend, closeThenDo
 
 # View helpers
 @docs openOnClick, openWithOptionsOnClick, closeOnClick, closeThenSendOnClick, opacity, display
@@ -119,7 +119,7 @@ updateContent : (Options -> List Html) -> Action
 updateContent =
   UpdateContent
 
-{-| Action builder for closing dialog. -}
+{-| Action builder for closing dialog without further any action. -}
 close : Action
 close =
   Close

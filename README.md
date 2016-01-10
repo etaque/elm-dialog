@@ -30,6 +30,8 @@ type alias Model =
   }
 ```
 
+See `getContent`, `getOptions`, `getTransition`, `isOpen` and `isVisible` for Dialog state querying.
+
 Initialize it with `dialog = Dialog.initial`. Prepare a case for the dialog actions:
 
 ```elm
@@ -50,17 +52,11 @@ update action model =
   case action of
     ...
 
-    -- with `WithDialog` record extension:
     DialogAction dialogAction ->
       Dialog.wrappedUpdate DialogAction dialogAction model
-    
-    -- without record extension:
-    DialogAction dialogAction ->
-      let
-        (newDialog, dialogFx) = Dialog.update dialogAction model.dialog
-      in
-        ({ model | dialog = newDialog }, Effects.map DialogAction dialogFx)
 ```
+
+  Otherwise you should use the regular `Dialog.update` function.
 
 * Add dialog actions signal as an input to your app. With StartApp, that would be:
 
@@ -73,7 +69,15 @@ StartApp.Start
 
 ### View
 
-You can find *[here](./example/styles/simple.css)* a default stylesheet for the dialog. On Elm side, it's a two-steps process:
+It's a two-steps process :
+
+1. Plug the dialog view in you main view
+2. Send action to dialog mailbox to open, update content and close
+
+This package provides a simple theme under `Dialog.Simple`, [here](./example/styles/simple.css)
+is a default stylesheet. You can roll out your own theme if you need it.
+
+So for `Simple` usage:
 
 * Plug the Dialog view at the root of your view. It's only a shell, hidden by default.
   It will be in charge of showing up the dialog content and backdrop according to state.
@@ -84,23 +88,23 @@ view addr model =
   div
     [ ]
     [ ... -- your app view
-    , Dialog.view model.dialog
+    , Dialog.Simple.view model.dialog
     ]
 ``` 
 
 
-* Trigger the modal by sending it's content:
+* Open the modal with `openOnClick` (or `openWithOptionsOnClick` if you need more control):
  
 ```elm
 -- Somewhere in your views, where you need to trigger a modal
 somePartOfYourView addr =
   button
-    [ Dialog.onClickShow (dialog addr) ]
+    [ Dialog.openOnClick (dialog addr) ]
     [ text "..." ]
     
-dialog : Address Action -> List Html
-dialog addr =
-  [ Dialog.header "Are you sure?"
+dialog : Address Action -> Dialog.Options -> List Html
+dialog addr options =
+  [ Dialog.header options "Are you sure?"
   , Dialog.body
       [ p [] [ text "Please give it a second thought." ] ]
   , Dialog.footer
@@ -118,38 +122,31 @@ dialog addr =
   ]
 
 ```
+Here we're using:
 
-Those are the **Simple** modal style decorators provided with the package. You can totally build your own modal renderer! Just copy & paste the source code in your app and adapt it to your needs. To sum up, here we have:
-
-* `view` as the modal decorator, in charge of display/hide control and animations,
-* `header` as the title decorator (see also `headerNoClose` and `headerCustomClose` in package doc),
-* `body` for the message of the modal,
+* `header` as the title decorator, taking `options` as parameter: if `options.onClose` is non empty, it will display a close button
+* `body` for the message of the modal
 * `footer` for the actions.
 
-Note also the `opacity` and `display` helpers for fading and visibity control.
+Options are:
+* `duration` for the fade animation, in ms
+* `onClose` for the task to run when closing the modal. Set to `Nothing` to prevent closing.
 
 
-### Options and control
-
-Let's walk the `Options` type:
-
-
+### Actions
 
 The package provide two levels to control dialog:
 
 * The basis is `address : Address Dialog.Action` in combination with those action builders: 
-  * `show : List Html -> Dialog.Action` shows up the modal with the provided content,
-  * `hide : Dialog.Action` hides the modal,
-  * `hideThenSend : Address a -> a -> Dialog.Action` hides the modal then send the given action to the supplied address when hide animation is done.
+  * `open`, `openWithOptions` to open the modal with the provided content,
+  * `updateContent` to update content without touching opened state
+  * `close`, `closeThenSend`, `closeThenDo` to close the modal and send a message/run a task.
   
   That makes it controllable from everywhere in your app, not only views.
 
-* Some `onClick` shortcuts for those action builders:
-  * `onClickShow : List Html -> Attribute`
-  * `onClickHide : Attribute`
-  * `onClickHideThenSend : Address a -> a -> Attribute`
-
-
+* Some `onClick` shortcuts are available:
+  * `openOnClick` and `openWithOptionsOnClick`
+  * `closeOnClick` and `closeThenSendOnClick`
 
 ## What's next
 
