@@ -6,6 +6,7 @@ A modal component for [Elm](http://elm-lang.org/). Not named `elm-modal` because
 
 ## Features
 
+* Optimised for the simple cases, easy to use
 * Plug it once, use it from anywhere in your app (by sending a message),
 * Simple view/style provided ([screenshot](https://raw.githubusercontent.com/etaque/elm-dialog/master/screenshot.png)) but can work with any css framework,
 * Animation-ready: built on top of [elm-transit](http://package.elm-lang.org/packages/etaque/elm-transit/latest), so you can add open/close effects and wait until animation is ended before seing your actions triggered.
