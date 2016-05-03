@@ -1,8 +1,11 @@
 # Elm Dialog
 
+**DEPRECATED: there are better ways of showing dialog modals, this package won't be upgraded to next Elm version, at least not in this shape.**
+
     elm package install etaque/elm-dialog
 
 A modal component for [Elm](http://elm-lang.org/). Not named `elm-modal` because it would be type-error-prone with the `model` we have everywhere in our apps!
+
 
 ## Features
 
