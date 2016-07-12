@@ -1,273 +1,232 @@
-module Dialog
-  ( Dialog, WithDialog, Action, Options
-  , initial, update, wrappedUpdate, actions
-  , address, open, openWithOptions, updateContent, closeThenSend, closeThenDo
-  , openOnClick, openWithOptionsOnClick, closeOnClick, closeThenSendOnClick, opacity, display
-  , getContent, getOptions, getTransition, isOpen, isVisible
-  ) where
+module Dialog exposing (Msg, Model, WithDialog, initial, Options, defaultOptions, taggedOpen, open, taggedUpdate, update, closeUpdate, subscriptions)
 
 {-|
 A modal component for Elm. See README for usage instructions.
 
 # Types
-@docs Dialog, WithDialog, Action, Options
+@docs Model, WithDialog, Msg, Options
 
-# Init and update
-@docs initial, update, wrappedUpdate, actions
-
-# Send actions
-@docs address, open, openWithOptions, updateContent, closeThenSend, closeThenDo
-
-# View helpers
-@docs openOnClick, openWithOptionsOnClick, closeOnClick, closeThenSendOnClick, opacity, display
-
-# State querying
-@docs getContent, getOptions, getTransition, isOpen, isVisible
+# init & udpate
+@docs initial, taggedOpen, open, taggedUpdate, update
 -}
 
+
 import Html exposing (..)
+import Html.App as Html
+import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-
-import Effects exposing (Effects, Never, none)
-import Task exposing (Task)
-import Signal exposing (Mailbox, Address)
+import Transit exposing (Step(..), getValue, getStep)
 import Keyboard
-import Transit exposing (Status(..), getValue, getStatus)
-import Response exposing (..)
-import Signal exposing (Address)
 
 
-{-| Dialog state (opaque type). -}
-type Dialog = S State
+type Msg
+  = NoOp
+  | Close
+  | KeyDown Int
+  | TransitMsg (Transit.Msg Msg)
 
-type alias State = Transit.WithTransition
-  { open : Bool
-  , options : Options
-  , content : List Html
-  }
 
-{-| Record extension that puts state in `dialog` field (see also [wrappedUpdate](#wrappedUpdate)). -}
-type alias WithDialog model =
-  { model | dialog : Dialog }
+type alias Model =
+  Transit.WithTransition
+    { open : Bool
+    , options : Options
+    }
 
-{-| Empty, hidden state for model init. -}
-initial : Dialog
+
+type alias WithDialog a =
+  { a | dialog : Model }
+
+
+initial : Model
 initial =
-  { transition = Transit.initial
+  { transition = Transit.empty
   , open = False
   , options = defaultOptions
-  , content = []
-  } |> S
+  }
 
-{-| Dialog actions. -}
-type Action
-  = NoOp
-  | Open (Maybe Options) (Options -> List Html)
-  | UpdateContent (Options -> List Html)
-  | Escape
-  | Close
-  | CloseThenDo (Task Never ())
-  | Do (Task Never ())
-  | TransitAction (Transit.Action Action)
 
-{-| Display and behaviour options (see showWithOptions):
-* `duration` of the fade transition,
-* `onClose`: what should be done when closing the modal. Set it to Nothing to prevent closing.
- -}
 type alias Options =
   { duration : Float
-  , onClose : Maybe (Task Never ())
+  , closeOnEscape : Bool
+  , onClose : Maybe Msg
   }
 
-{-| Default options: 150ms transition, closable. -}
+
 defaultOptions : Options
 defaultOptions =
-  { duration = 150
-  , onClose = Just (Signal.send address Close)
+  { duration = 50
+  , closeOnEscape = True
+  , onClose = Nothing
   }
 
-{-| Private -}
-mailbox : Mailbox Action
-mailbox =
-  Signal.mailbox NoOp
 
-{-| Dialog actions signal: consumption required! -}
-actions : Signal Action
-actions =
-  Signal.mergeMany
-    [ mailbox.signal
-    , Signal.map (\_ -> Escape) (Keyboard.isDown 27)
-    ]
+taggedOpen : (Msg -> msg) -> WithDialog model -> ( WithDialog model, Cmd msg )
+taggedOpen tagger model =
+  let
+    ( newDialog, cmd ) =
+      open model.dialog
+  in
+    ( { model | dialog = newDialog }, Cmd.map tagger cmd )
 
-{-| Where to send your actions -}
-address : Address Action
-address =
-  mailbox.address
 
-{-| Action builder for opening dialog with default options and content. -}
-open : (Options -> List Html) -> Action
-open =
-  Open Nothing
+open : Model -> ( Model, Cmd Msg )
+open model =
+  Transit.start TransitMsg NoOp (0, model.options.duration) { model | open = True }
 
-{-| Action builder for open dialog with custom options and content. -}
-openWithOptions : Options -> (Options -> List Html) -> Action
-openWithOptions options =
-  Open (Just options)
 
-{-| Action builder for content update -}
-updateContent : (Options -> List Html) -> Action
-updateContent =
-  UpdateContent
+taggedUpdate : (Msg -> msg) -> Msg -> WithDialog model -> ( WithDialog model, Cmd msg )
+taggedUpdate tagger msg model =
+  let
+    ( newDialog, cmd ) =
+      update msg model.dialog
+  in
+    ( { model | dialog = newDialog }, Cmd.map tagger cmd )
 
-{-| Action builder for closing dialog without further any action. -}
-close : Action
-close =
-  Close
 
-{-| Action builder for closing dialog then sending an action to an address. -}
-closeThenSend : Address a -> a -> Action
-closeThenSend addr action =
-  closeThenDo (Signal.send addr action)
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+  case msg of
+    NoOp ->
+      ( model, Cmd.none )
 
-{-| Action builder for closing dialog send performing a task. -}
-closeThenDo : Task Never () -> Action
-closeThenDo =
-  CloseThenDo
-
-{-| Update dialog state. Takes effect duration in ms as first parameter. -}
-update : Action -> Dialog -> Response Dialog Action
-update action (S state) =
-  case action of
-
-    Open maybeOptions template ->
-      let
-        options = Maybe.withDefault defaultOptions maybeOptions
-        timeline = Transit.timeline 0 NoOp options.duration
-        newModel =
-          { state
-            | open = True
-            , content = template options
-            , options = options
-          }
-      in
-        Transit.init TransitAction timeline newModel
-          |> mapModel S
-
-    Escape ->
-      case state.options.onClose of
-        Just task ->
-          taskRes (S state) (Task.succeed Close)
-        Nothing ->
-          res (S state) none
-
-    UpdateContent template ->
-      let
-        newModel = S { state | content = template state.options }
-      in
-        res newModel none
+    KeyDown code ->
+      if model.options.closeOnEscape && code == 27 && model.open then
+        closeUpdate model
+      else
+        ( model, Cmd.none )
 
     Close ->
-      case state.options.onClose of
-        Just task ->
-          updateCloseThenDo task (S state)
-        Nothing ->
-          res (S state) none
+      closeUpdate model
 
-    CloseThenDo task ->
-      updateCloseThenDo task (S state)
-
-    Do task ->
-      taskRes (S { state | content = [] }) (Task.map (\_ -> NoOp) task)
-
-    TransitAction a ->
-      Transit.update TransitAction a state
-        |> mapModel S
-
-    NoOp ->
-      (S state, none)
-
-{-| Internal -}
-updateCloseThenDo : Task Never () -> Dialog -> Response Dialog Action
-updateCloseThenDo task (S state) =
-  if state.open then
-    let
-      timeline = Transit.timeline state.options.duration (Do task) 0
-      newState = { state | open = False }
-    in
-      Transit.init TransitAction timeline newState
-        |> mapModel S
-  else
-    (S state, none)
+    TransitMsg transitMsg ->
+      Transit.tick TransitMsg transitMsg model
 
 
-{-| Wrapped update for `WithDialog`, saves you a model field update and an Effects map. -}
-wrappedUpdate : (Action -> action) -> Action -> WithDialog model -> Response (WithDialog model) (action)
-wrappedUpdate actionWrapper action model =
-  let
-    (newDialog, dialogFx) = update action model.dialog
-  in
-    ({ model | dialog = newDialog }, Effects.map actionWrapper dialogFx)
+closeUpdate : Model -> ( Model, Cmd Msg )
+closeUpdate model =
+  Transit.start TransitMsg NoOp (model.options.duration, 0) { model | open = False }
 
 
-{-| On click, fill and show up dialog with the provided content. -}
-openOnClick : (Options -> List Html) -> Attribute
-openOnClick template =
-  onClick address (open template)
+subscriptions : Transit.WithTransition model -> Sub Msg
+subscriptions model =
+  Sub.batch
+    [ Keyboard.downs KeyDown
+    , Transit.subscriptions TransitMsg model
+    ]
 
-{-| On click, fill and show up dialog with the provided options and content. -}
-openWithOptionsOnClick : Options -> (Options -> List Html) -> Attribute
-openWithOptionsOnClick options template =
-  onClick address (openWithOptions options template)
 
-{-| On click, hide dialog. -}
-closeOnClick : Attribute
-closeOnClick =
-  onClick address close
+type alias Layout =
+  { header : List (Html Msg)
+  , body : List (Html Msg)
+  , footer : List (Html Msg)
+  }
 
-{-| On click, hide dialog then send action. -}
-closeThenSendOnClick : Address a -> a -> Attribute
-closeThenSendOnClick addr action =
-  onClick address (closeThenSend addr action)
 
-{-| Get current dialog content. -}
-getContent : Dialog -> List Html
-getContent (S {content}) =
-  content
+emptyLayout : Layout
+emptyLayout =
+  Layout [] [] []
 
-{-| Get current dialog options -}
-getOptions : Dialog -> Options
-getOptions (S {options}) =
-  options
 
-{-| Get current transition state. -}
-getTransition : Dialog -> Transit.Transition
-getTransition (S {transition}) =
-  transition
+type alias View msg =
+  { content : Html msg
+  , backdrop : Html msg
+  }
 
-{-| Is the dialog currently open? -}
-isOpen : Dialog -> Bool
-isOpen (S {open}) =
-  open
+view : (Msg -> msg) -> Model -> Layout -> View msg
+view tagger model layout =
+  { content = Html.map tagger <|
+      div
+        [ class "dialog-wrapper"
+        , style
+            [ ( "display", display model )
+            , ( "opacity", toString (opacity model) )
+            ]
+        , onClick Close
+        ]
+        [ div
+            [ class "dialog-sheet" ]
+            [ if List.isEmpty layout.header then
+                text ""
+              else
+                div
+                  [ class "dialog-header" ]
+                  (closeButton :: layout.header)
+            , div
+                [ class "dialog-body" ]
+                layout.body
+            , if List.isEmpty layout.footer then
+                text ""
+              else
+                div
+                  [ class "dialog-footer" ]
+                  layout.footer
+            ]
+        ]
+  , backdrop = Html.map tagger <|
+      div [ class "dialog-backdrop" ] []
+  }
 
-{-| Visibility helper: either open, or transitionning to closed -}
-isVisible : Dialog -> Bool
-isVisible (S {open, transition}) =
-  open || Transit.getStatus transition == Exit
 
-{-| CSS opacity helper for fading effect. -}
-opacity : Dialog -> Float
-opacity (S {open, transition}) =
+closeButton : Html Msg
+closeButton =
+  span
+    [ class "dialog-close"
+    , onClick Close
+    ]
+    [ closeIcon ]
+
+
+closeIcon : Html msg
+closeIcon =
+  node "svg"
+    [ attribute "width" "24"
+    , attribute "height" "24"
+    ]
+    [ node "path"
+        [ attribute "d" "M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" ]
+        []
+    ]
+
+
+title : String -> Html Msg
+title s =
+  div [ class "dialog-title" ] [ text s ]
+
+
+subtitle : String -> Html Msg
+subtitle s =
+  div [ class "dialog-subtitle" ] [ text s ]
+
+
+isVisible : Model -> Bool
+isVisible { open, transition } =
+  open || Transit.getStep transition == Exit
+
+
+opacity : Model -> Float
+opacity { open, transition } =
   if open then
-    case Transit.getStatus transition of
-      Exit -> 0
-      Enter -> Transit.getValue transition
-      Done -> 1
-  else
-    case Transit.getStatus transition of
-      Exit -> 1 - Transit.getValue transition
-      _ -> 0
+    case Transit.getStep transition of
+      Exit ->
+        0
 
-{-| CSS display helper. -}
-display : Dialog -> String
-display dialog =
-  if isVisible dialog then "block" else "none"
+      Enter ->
+        Transit.getValue transition
+
+      Done ->
+        1
+  else
+    case Transit.getStep transition of
+      Exit ->
+        Transit.getValue transition
+
+      _ ->
+        0
+
+
+display : Model -> String
+display model =
+  if isVisible model then
+    "block"
+  else
+    "none"
