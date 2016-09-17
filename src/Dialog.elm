@@ -4,10 +4,10 @@ module Dialog exposing (Msg, Model, WithDialog, initial, Options, defaultOptions
 A modal component for Elm. See README for usage instructions.
 
 # Types
-@docs Model, WithDialog, Msg, Options
+@docs Model, WithDialog, Msg, Options, defaultOptions
 
 # init & udpate
-@docs initial, taggedOpen, open, taggedUpdate, update
+@docs subscriptions, initial, taggedOpen, open, taggedUpdate, update, closeUpdate
 -}
 
 
@@ -19,6 +19,7 @@ import Transit exposing (Step(..), getValue, getStep)
 import Keyboard
 
 
+{-| Message -}
 type Msg
   = NoOp
   | Close
@@ -26,6 +27,7 @@ type Msg
   | TransitMsg (Transit.Msg Msg)
 
 
+{-| Model -}
 type alias Model =
   Transit.WithTransition
     { open : Bool
@@ -33,10 +35,12 @@ type alias Model =
     }
 
 
+{-| Model extension -}
 type alias WithDialog a =
   { a | dialog : Model }
 
 
+{-| initial model: closed, default options. -}
 initial : Model
 initial =
   { transition = Transit.empty
@@ -45,6 +49,12 @@ initial =
   }
 
 
+{-| Options:
+
+* `duration`: of animation in ms
+* `closeOnEscape`: should a keypress on ESC close the dialog
+* `onClose`: which message should be sent when closing the dialog
+ -}
 type alias Options =
   { duration : Float
   , closeOnEscape : Bool
@@ -52,6 +62,7 @@ type alias Options =
   }
 
 
+{-| Default options: 50ms, close on escape, no message sent. -}
 defaultOptions : Options
 defaultOptions =
   { duration = 50
@@ -60,6 +71,7 @@ defaultOptions =
   }
 
 
+{-| Open the dialog (shortcut when using model extension) -}
 taggedOpen : (Msg -> msg) -> WithDialog model -> ( WithDialog model, Cmd msg )
 taggedOpen tagger model =
   let
@@ -69,11 +81,13 @@ taggedOpen tagger model =
     ( { model | dialog = newDialog }, Cmd.map tagger cmd )
 
 
+{-| Open the dialog -}
 open : Model -> ( Model, Cmd Msg )
 open model =
   Transit.start TransitMsg NoOp (0, model.options.duration) { model | open = True }
 
 
+{-| Update the dialog -}
 taggedUpdate : (Msg -> msg) -> Msg -> WithDialog model -> ( WithDialog model, Cmd msg )
 taggedUpdate tagger msg model =
   let
@@ -83,6 +97,7 @@ taggedUpdate tagger msg model =
     ( { model | dialog = newDialog }, Cmd.map tagger cmd )
 
 
+{-| Update the dialog (shortcut when using model extension) -}
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
@@ -102,11 +117,13 @@ update msg model =
       Transit.tick TransitMsg transitMsg model
 
 
+{-| Close the dialog -}
 closeUpdate : Model -> ( Model, Cmd Msg )
 closeUpdate model =
   Transit.start TransitMsg NoOp (model.options.duration, 0) { model | open = False }
 
 
+{-| Subscriptions: keyboard presses (for ESC) and animation ticks -}
 subscriptions : Transit.WithTransition model -> Sub Msg
 subscriptions model =
   Sub.batch
@@ -115,26 +132,39 @@ subscriptions model =
     ]
 
 
-type alias Layout =
+
+{-| A dialog is composed of a header, a body and a footer. -}
+type alias Content =
   { header : List (Html Msg)
   , body : List (Html Msg)
   , footer : List (Html Msg)
   }
 
 
-emptyLayout : Layout
+{-| The empty content -}
+emptyLayout : Content
 emptyLayout =
-  Layout [] [] []
+  Content [] [] []
 
 
+{-| The view record: dialog box and backdrop (so they can be placed separately in the DOM tree) -}
 type alias View msg =
-  { content : Html msg
+  { box : Html msg
   , backdrop : Html msg
   }
 
-view : (Msg -> msg) -> Model -> Layout -> View msg
+
+{-| Dialog view, with inputs:
+
+* messages tagger
+* dialog model, for display and animation state
+* content of the dialog to be rendered
+
+Returns both content and backdrop in `View` record.
+ -}
+view : (Msg -> msg) -> Model -> Content -> View msg
 view tagger model layout =
-  { content = Html.map tagger <|
+  { box = Html.map tagger <|
       div
         [ class "dialog-wrapper"
         , style
@@ -167,6 +197,7 @@ view tagger model layout =
   }
 
 
+{-| View helper for close button -}
 closeButton : Html Msg
 closeButton =
   span
@@ -176,6 +207,7 @@ closeButton =
     [ closeIcon ]
 
 
+{-| View helper for close icon (SVG) -}
 closeIcon : Html msg
 closeIcon =
   node "svg"
@@ -188,21 +220,25 @@ closeIcon =
     ]
 
 
+{-| View helper for title -}
 title : String -> Html Msg
 title s =
   div [ class "dialog-title" ] [ text s ]
 
 
+{-| View helper for subtitle -}
 subtitle : String -> Html Msg
 subtitle s =
   div [ class "dialog-subtitle" ] [ text s ]
 
 
+{-| Dialog visibility (true if open or closing) -}
 isVisible : Model -> Bool
 isVisible { open, transition } =
   open || Transit.getStep transition == Exit
 
 
+{-| Dialog opacity (0 -> 1 on opening, 1 -> 0 on closing) -}
 opacity : Model -> Float
 opacity { open, transition } =
   if open then
@@ -224,6 +260,7 @@ opacity { open, transition } =
         0
 
 
+{-| Helper for `display` property (CSS) -}
 display : Model -> String
 display model =
   if isVisible model then
