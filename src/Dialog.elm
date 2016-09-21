@@ -1,4 +1,4 @@
-module Dialog exposing (Msg, Model, WithDialog, initial, Options, defaultOptions, taggedOpen, open, taggedUpdate, update, closeUpdate, subscriptions)
+module Dialog exposing (Msg, Model, WithDialog, initial, Options, defaultOptions, taggedOpen, open, taggedUpdate, update, closeUpdate, subscriptions, Content, emptyContent, View, view, title, subtitle)
 
 {-|
 A modal component for Elm. See README for usage instructions.
@@ -6,8 +6,11 @@ A modal component for Elm. See README for usage instructions.
 # Types
 @docs Model, WithDialog, Msg, Options, defaultOptions
 
-# init & udpate
+# Init & udpate
 @docs subscriptions, initial, taggedOpen, open, taggedUpdate, update, closeUpdate
+
+# View
+@docs View, view, Content, emptyContent, title, subtitle
 -}
 
 
@@ -134,16 +137,16 @@ subscriptions model =
 
 
 {-| A dialog is composed of a header, a body and a footer. -}
-type alias Content =
-  { header : List (Html Msg)
-  , body : List (Html Msg)
-  , footer : List (Html Msg)
+type alias Content msg =
+  { header : List (Html msg)
+  , body : List (Html msg)
+  , footer : List (Html msg)
   }
 
 
 {-| The empty content -}
-emptyLayout : Content
-emptyLayout =
+emptyContent : Content msg
+emptyContent =
   Content [] [] []
 
 
@@ -162,16 +165,16 @@ type alias View msg =
 
 Returns both content and backdrop in `View` record.
  -}
-view : (Msg -> msg) -> Model -> Content -> View msg
+view : (Msg -> msg) -> Model -> Content msg -> View msg
 view tagger model layout =
-  { box = Html.map tagger <|
+  { box =
       div
         [ class "dialog-wrapper"
         , style
             [ ( "display", display model )
             , ( "opacity", toString (opacity model) )
             ]
-        , onClick Close
+        , onClick (tagger Close)
         ]
         [ div
             [ class "dialog-sheet" ]
@@ -180,7 +183,7 @@ view tagger model layout =
               else
                 div
                   [ class "dialog-header" ]
-                  (closeButton :: layout.header)
+                  ((Html.map tagger closeButton) :: layout.header)
             , div
                 [ class "dialog-body" ]
                 layout.body
@@ -221,13 +224,13 @@ closeIcon =
 
 
 {-| View helper for title -}
-title : String -> Html Msg
+title : String -> Html msg
 title s =
   div [ class "dialog-title" ] [ text s ]
 
 
 {-| View helper for subtitle -}
-subtitle : String -> Html Msg
+subtitle : String -> Html msg
 subtitle s =
   div [ class "dialog-subtitle" ] [ text s ]
 

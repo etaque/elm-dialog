@@ -1,27 +1,15 @@
-module Main where
+module Main exposing (..)
 
-import Effects exposing (Never)
-import Task
-import Signal
-import StartApp
-
-import Update exposing (init, update, actions)
+import Html.App as Html
+import Update exposing (init, update, subscriptions)
 import View exposing (view)
 
 
-app =
-  StartApp.start
-    { init = init
-    , update = update
-    , view = view
-    , inputs = [ actions ]
-    }
-
-
+main : Program Never
 main =
-  app.html
-
-
-port tasks : Signal (Task.Task Never ())
-port tasks =
-  app.tasks
+    Html.program
+        { init = init
+        , update = update
+        , subscriptions = subscriptions
+        , view = view
+        }

@@ -1,39 +1,39 @@
-module Update where
+module Update exposing (..)
 
-import Effects exposing (Effects, none)
-import Dialog
-
+import Foo.Update as Foo
+import Bar.Update as Bar
 import Model exposing (..)
 
 
-initialModel : Model
-initialModel =
-  { dialog = Dialog.initial
-  , counter = 0
-  }
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.batch
+        [ Sub.map FooMsg (Foo.subscriptions model.foo)
+        , Sub.map BarMsg (Bar.subscriptions model.bar)
+        ]
 
 
-actions : Signal Action
-actions =
-  Signal.map DialogAction Dialog.actions
-
-
-init : (Model, Effects Action)
+init : ( Model, Cmd Msg )
 init =
-  (initialModel, none)
+    ( initialModel, Cmd.none )
 
 
-update : Action -> Model -> (Model, Effects Action)
-update action ({counter} as model) =
-  case action of
-    NoOp ->
-      (model, none)
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        SetRoute route ->
+            ( { model | route = route }, Cmd.none )
 
-    Inc ->
-      ({ model | counter = counter + 1 }, none)
+        FooMsg fooMsg ->
+            let
+                ( newFoo, fooCmd ) =
+                    Foo.update fooMsg model.foo
+            in
+                ( { model | foo = newFoo }, Cmd.map FooMsg fooCmd )
 
-    Reset ->
-      ({ model | counter = 0 }, none)
-
-    DialogAction a ->
-      Dialog.wrappedUpdate DialogAction a model
+        BarMsg barMsg ->
+            let
+                ( newBar, barCmd ) =
+                    Bar.update barMsg model.bar
+            in
+                ( { model | bar = newBar }, Cmd.map BarMsg barCmd )
