@@ -1,6 +1,6 @@
 # Elm Dialog
 
-**DEPRECATED: there are better ways of showing dialog modals, this package won't be upgraded to next Elm version, at least not in this shape.**
+**Deprecated**. There are better ways of showing dialog modals than the 0.16 version of this package. Rewrite in progress on [0.17](https://github.com/etaque/elm-dialog/tree/0.17) branch for a nicer, TEA-compliant version. Or just use [krisajenkins/elm-dialog](http://package.elm-lang.org/packages/krisajenkins/elm-dialog/latest), that's good stuff.
 
     elm package install etaque/elm-dialog
 
